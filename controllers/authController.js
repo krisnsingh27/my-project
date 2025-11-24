@@ -2,18 +2,27 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+
+
+
 const validatePassword = (password) => {
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
     return regex.test(password);
 };
 
+
+
 exports.signup = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, age, gender, bio, hobbies } = req.body;
+
 
         if (!name || !email || !password) {
-            return res.status(400).json({ message: "Name, email and password are required" });
+            return res.status(400).json({
+                message: "Name, email and password are required"
+            });
         }
+
 
         if (!validatePassword(password)) {
             return res.status(400).json({
@@ -21,21 +30,37 @@ exports.signup = async (req, res) => {
             });
         }
 
-        const exist = await User.findOne({ email });
-        if (exist) return res.status(400).json({ message: "User already exists" });
 
-       
+        const exist = await User.findOne({ email });
+        if (exist) {
+            return res.status(400).json({
+                message: "User already exists"
+            });
+        }
+
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        await User.create({ name, email, password: hashedPassword });
 
-        res.status(201).json({ message: "Signup successful" });
+        await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            age,
+            gender,
+            bio,
+            hobbies
+        });
+
+        res.status(201).json({
+            message: "Signup successful"
+        });
 
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };
+
 
 exports.login = async (req, res) => {
     try {
@@ -47,13 +72,25 @@ exports.login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
+
+
+
         const token = jwt.sign(
             { userId: user._id },
             process.env.JWT_SECRET,
             { expiresIn: "10d" }
         );
 
-        res.status(200).json({ message: "Login successful", token });
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: false,      
+            sameSite: "lax",
+            maxAge: 10 * 24 * 60 * 60 * 1000
+        });
+
+
+        res.status(200).json({ message: "Login successful" });
 
     } catch (err) {
         res.status(500).json({ error: err.message });

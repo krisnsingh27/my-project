@@ -17,33 +17,23 @@
 
 const express = require("express");
 const router = express.Router();
-const userController = require("../controllers/userController");
-const authMiddleware = require("../middleware/authMiddleware"); 
+const controller = require("../controllers/userController");
 
 
 
 
-router.post("/profile/create", authMiddleware, userController.createProfile);
+
+router.get("/", controller.getUsers);
 
 
-
-router.get("/profile", authMiddleware, userController.getProfile);
-
+router.get("/:id", controller.getUserById);
 
 
-router.put("/profile/update/:id", authMiddleware, userController.updateProfile);
+router.put("/:id", controller.updateUser);
 
 
-router.delete("/profile/delete/:id", authMiddleware, userController.deleteProfile);
-
-
-router.get("/suggestions", authMiddleware, userController.getSuggestions);
-
-
-router.post("/swipe", authMiddleware, userController.swipeUser);
-
-
-router.get("/friends", authMiddleware, userController.getFriends);
+router.delete("/:id", controller.deleteUser);
 
 module.exports = router;
+
 
