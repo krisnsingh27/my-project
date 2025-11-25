@@ -9,28 +9,28 @@ const Connection = require("../models/Connection")
 //         res.status(500).json({ error: err.message });
 //     }
 // };
-exports.getUsers = async (req, res) => {
-    try {
-        const userId = req.user.id;
+// exports.getUsers = async (req, res) => {
+//     try {
+//         const userId = req.user.id;
 
-        const rejected = await Connection.find({
-            $or: [{ SenderId: userId }, { ReceiverId: userId }],
-            status: "rejected"
-        });
+//         const rejected = await Connection.find({
+//             $or: [{ SenderId: userId }, { ReceiverId: userId }],
+//             status: "rejected"
+//         });
 
-        const rejectedUserIds = rejected.map(c =>
-            c.SenderId.toString() === userId ? c.ReceiverId.toString() : c.SenderId.toString()
-        );
+//         const rejectedUserIds = rejected.map(c =>
+//             c.SenderId.toString() === userId ? c.ReceiverId.toString() : c.SenderId.toString()
+//         );
 
-        const users = await User.find({
-            _id: { $nin: [userId, ...rejectedUserIds] }
-        });
+//         const users = await User.find({
+//             _id: { $nin: [userId, ...rejectedUserIds] }
+//         });
 
-        res.json({ message: "Users fetched", data: users });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
+//         res.json({ message: "Users fetched", data: users });
+//     } catch (err) {
+//         res.status(500).json({ error: err.message });
+//     }
+// };
 
 exports.getUserById = async (req, res) => {
     try {

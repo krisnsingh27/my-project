@@ -1,118 +1,106 @@
 
 const Connection = require("../models/Connection");
+const User = require("../models/User");
 
 
 exports.sendRequest = async (req, res) => {
     try {
-        const { SenderId, ReceiverId } = req.body;
+        const fromUser = req.user.id; 
+        const toUser = req.params.id; 
 
-        if (SenderId === ReceiverId) {
-            return res.status(400).json({ message: "Cannot send request to yourself" });
+        if (fromUser === toUser) {
+            return res.status(400).json({ message: "You cannot send request to yourself" });
         }
 
-      
-        const existing = await Connection.findOne({ SenderId, ReceiverId });
-        if (existing) {
-            return res.status(400).json({ message: "Request already sent", data: existing });
+       
+        let connection = await Connection.findOne({
+            $or: [
+                { fromUser, toUser },
+                { fromUser: toUser, toUser: fromUser }
+            ]
+        });
+
+        if (connection) {
+            return res.status(400).json({ message: "Connection already exists" });
         }
 
-        const request = await Connection.create({
-            SenderId,
-            ReceiverId,
+        const newRequest = await Connection.create({
+            fromUser,
+            toUser,
             status: "pending"
         });
 
-        res.status(201).json({ message: "Connection request sent", data: request });
+        res.json({ message: "Request sent", data: newRequest });
 
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };
 
 
 
-exports.updateRequest = async (req, res) => {
+exports.acceptRequest = async (req, res) => {
     try {
-        const { status } = req.body;
+        const userId = req.user.id;
         const requestId = req.params.id;
 
-        if (!["accepted", "rejected"].includes(status)) {
-            return res.status(400).json({ message: "Invalid status. Use accepted or rejected" });
-        }
+        const connection = await Connection.findOne({ _id: requestId, toUser: userId });
 
-        const request = await Connection.findByIdAndUpdate(
-            requestId,
-            { status },
-            { new: true }
-        );
-
-        if (!request) {
+        if (!connection) {
             return res.status(404).json({ message: "Request not found" });
         }
 
-        res.json({ message: "Request updated", data: request });
+        connection.status = "accepted";
+        await connection.save();
 
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.json({ message: "Request accepted", data: connection });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };
 
 
 
-exports.getPendingRequests = async (req, res) => {
+exports.rejectRequest = async (req, res) => {
     try {
-        const userId = req.params.userId;
-
-        const requests = await Connection.find({
-            ReceiverId: userId,
-            status: "pending"
-        }).populate("SenderId", "name email gender");
-
-        res.json({ message: "Pending requests", data: requests });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
-
-
-
-
-exports.deleteConnection = async (req, res) => {
-    try {
+        const userId = req.user.id;
         const requestId = req.params.id;
 
-        const deleted = await Connection.findByIdAndDelete(requestId);
+        const connection = await Connection.findOne({ _id: requestId, toUser: userId });
 
-        if (!deleted) {
-            return res.status(404).json({ message: "Connection not found" });
+        if (!connection) {
+            return res.status(404).json({ message: "Request not found" });
         }
 
-        res.json({ message: "Connection deleted" });
+        connection.status = "rejected";
+        await connection.save();
 
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.json({ message: "Request rejected", data: connection });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };
 
 
-exports.rejectedUser = async (req, res) => {
+
+exports.ignoreUser = async (req, res) => {
     try {
-        const userA = req.user.id; 
-        const userB = req.params.id;
+        const fromUser = req.user.id;  
+        const toUser = req.params.id;   
 
         let connection = await Connection.findOne({
             $or: [
-                { fromUser: userA, toUser: userB },
-                { fromUser: userB, toUser: userA }
+                { fromUser, toUser },
+                { fromUser: toUser, toUser: fromUser }
             ]
         });
 
         if (!connection) {
-           
             connection = await Connection.create({
-                fromUser: userA,
-                toUser: userB,
+                fromUser,
+                toUser,
                 status: "ignored"
             });
         } else {
@@ -120,10 +108,66 @@ exports.rejectedUser = async (req, res) => {
             await connection.save();
         }
 
-        res.json({ message: "User ignored", data: connection });
+        res.json({ message: "User ignored successfully", data: connection });
 
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
+
+exports.requestsSent = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const sent = await Connection.find({
+            fromUser: userId,
+            status: "pending"
+        }).populate("toUser", "name -_id");
+
+        res.json({ message: "Sent requests", data: sent });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+
+
+exports.requestsReceived = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const received = await Connection.find({
+            toUser: userId,
+            status: "pending"
+        }).populate("fromUser", "-password");
+
+        res.json({ message: "Received requests", data: received });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+
+
+exports.getConnections = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const friends = await Connection.find({
+            $or: [
+                { fromUser: userId, status: "accepted" },
+                { toUser: userId, status: "accepted" }
+            ]
+        })
+            .populate("fromUser", "-password")
+            .populate("toUser", "-password");
+
+        res.json({ message: "Accepted connections", data: friends });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

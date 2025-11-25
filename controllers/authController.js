@@ -14,7 +14,7 @@ const validatePassword = (password) => {
 
 exports.signup = async (req, res) => {
     try {
-        const { name, email, password, age, gender, bio, hobbies } = req.body;
+        const { name, email, password, age, gender, bio, hobby } = req.body;
 
 
         if (!name || !email || !password) {
@@ -49,7 +49,7 @@ exports.signup = async (req, res) => {
             age,
             gender,
             bio,
-            hobbies
+            hobby
         });
 
         res.status(201).json({
@@ -80,7 +80,7 @@ exports.login = async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: "10d" }
         );
-
+        
 
         res.cookie("token", token, {
             httpOnly: true,
@@ -95,6 +95,15 @@ exports.login = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+
+
+
+};
+
+exports.logout = (req,res) => {
+    res.clearCookie("token");
+    res.status(200).json({message:"Logout successful"});
+
 };
 
 
