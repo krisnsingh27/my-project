@@ -10,7 +10,7 @@ const controller = require("../controllers/userController");
 
 
 
-
+router.get("/feed", auth, controller.getFeed);
 
 router.get("/:id",auth, controller.getUserById);
 

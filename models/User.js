@@ -8,7 +8,12 @@ const UserSchema = new mongoose.Schema({
     age: Number,
     gender: { type: String, enum: ["male", "female", "other"] ,default:"male"},
     bio: String,
-    hobby: [String]
+    hobby: [String],
+
+    friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
+    ignoredUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
+    rejectedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
+
 
   
 }, { timestamps: true });

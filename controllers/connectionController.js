@@ -152,22 +152,59 @@ exports.requestsReceived = async (req, res) => {
 
 
 
+// exports.getConnections = async (req, res) => {
+//     try {
+//         const userId = req.user.id;
+
+//         const friends = await Connection.find({
+//             $or: [
+//                 { fromUser: userId, status: "accepted" },
+//                 { toUser: userId, status: "accepted" }
+//             ]
+//         })
+//             .populate("fromUser", "-password")
+//             .populate("toUser", "-password");
+
+//         res.json({ message: "Accepted connections", data: friends });
+
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// };
+
+
+
+
 exports.getConnections = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const friends = await Connection.find({
+        const connections = await Connection.find({
+            status: "accepted",
             $or: [
-                { fromUser: userId, status: "accepted" },
-                { toUser: userId, status: "accepted" }
+                { fromUser: userId },
+                { toUser: userId }
             ]
         })
-            .populate("fromUser", "-password")
-            .populate("toUser", "-password");
+        .populate("fromUser", "-password")
+        .populate("toUser", "-password");
 
-        res.json({ message: "Accepted connections", data: friends });
+        
+        const friends = connections.map(conn => {
+            if (conn.fromUser._id.toString() === userId) {
+                return conn.toUser;  
+            } else {
+                return conn.fromUser; 
+            }
+        });
+
+        res.json({
+            message: "Accepted friends",
+            data: friends
+        });
 
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
