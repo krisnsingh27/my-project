@@ -3,106 +3,115 @@ const Connection = require("../models/Connection")
 
 
 
+
+
 exports.getFeed = async (req, res) => {
-    try {
-       
-        const currentUser = await User.findById(req.user.id);
-        if (!currentUser) {
-            return res.status(404).json({ message: "User not found" });
-        }
+  try {
+    const meId = req.user.id;
 
-       
-        const excludeList = [
-            ...(currentUser.friends || []).map(id => id.toString()),
-            ...(currentUser.ignoredUsers || []).map(id => id.toString()),
-            ...(currentUser.rejectedUsers || []).map(id => id.toString()),
-            currentUser._id.toString()
-        ];
+   
+    const acceptedConnections = await Connection.find({
+      status: "accepted",
+      $or: [{ fromUser: meId }, { toUser: meId }]
+    });
 
-        
-        let feedUsers = await User.find({
-            _id: { $nin: excludeList },            
-            ignoredUsers: { $ne: currentUser._id }, 
-            rejectedUsers: { $ne: currentUser._id } 
-           
-        }).select("-password -friends -ignoredUsers -rejectedUsers -__v");
+    
+    const friendIds = acceptedConnections.map(conn =>
+      conn.fromUser.toString() === meId ? conn.toUser : conn.fromUser
+    );
 
-       
-        feedUsers = feedUsers.sort(() => Math.random() - 0.5);
+  
+    const me = await User.findById(meId);
+    if (!me) return res.status(404).json({ message: "User not found" });
 
-       
-        const formattedFeed = feedUsers.map(user => ({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            age: user.age,
-            gender: user.gender,
-            bio: user.bio,
-            hobbies: Array.isArray(user.hobbies)
-                ? user.hobbies
-                : typeof user.hobbies === "string"
-                    ? user.hobbies.split(",").map(s => s.trim())
-                    : []
-        }));
+    const ignoredIds = (me.ignoredUsers || []).map(id => id.toString());
+    const rejectedIds = (me.rejectedUsers || []).map(id => id.toString());
+    
 
-       
-        res.status(200).json({
-            message: "User feed",
-            data: formattedFeed
-        });
+   
+    const excludeList = [meId, ...friendIds, ...ignoredIds, ...rejectedIds];
 
-    } catch (err) {
-        console.error("Feed error:", err);
-        res.status(500).json({ error: err.message || "Server error" });
-    }
+  
+    const others = await User.find({ _id: { $nin: excludeList } })
+      .select("name age gender bio hobbies");
+
+    
+    const shuffled = others.sort(() => Math.random() - 0.5);
+
+    res.json({ message: "User feed", data: shuffled });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
+
+
+
+
 
 
 
 exports.getUserById = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
+  try {
+    const id = req.params.id;
+    const user = await User.findById(id).select("-password"); 
 
-        if (!user) return res.status(404).json({ message: "User not found" });
-
-        res.json({ message: "User fetched", data: user });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User fetched", data: user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
+
+
+
+
 
 
 
 
 
 exports.updateUser = async (req, res) => {
-    try {
-        const updated = await User.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true } 
-        );
+  try {
+    const myId = req.user.id;
+    const targetId = req.params.id;
 
-        if (!updated) return res.status(404).json({ message: "User not found" });
-
-        res.json({ message: "User updated", data: updated });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (myId !== targetId) {
+      return res.status(403).json({ message: "You can only edit your own profile" });
     }
+
+    const updated = await User.findByIdAndUpdate(targetId, req.body, { new: true })
+      .select("-password"); 
+
+    if (!updated) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "Profile updated", data: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
+
+
 
 
 exports.deleteUser = async (req, res) => {
-    try {
-        const deleted = await User.findByIdAndDelete(req.params.id);
+  try {
+    const myId = req.user.id;
+    const targetId = req.params.id;
 
-        if (!deleted) return res.status(404).json({ message: "User not found" });
-
-        res.json({ message: "User deleted successfully" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (myId !== targetId) {
+      return res.status(403).json({ message: "You can only delete your own profile" });
     }
+
+    const deleted = await User.findByIdAndDelete(targetId);
+    if (!deleted) return res.status(404).json({ message: "User not found" });
+
+    res.clearCookie("token"); 
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
+
 
 
 

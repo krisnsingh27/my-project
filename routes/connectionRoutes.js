@@ -29,8 +29,8 @@ const {
     acceptRequest,
     rejectRequest,
     ignoreUser,
-    requestsSent,
-    requestsReceived,
+    // requestsSent,
+    // requestsReceived,
     getConnections
 } = require("../controllers/connectionController");
 
@@ -39,8 +39,8 @@ router.put("/accept/:id", auth, acceptRequest);
 router.put("/reject/:id", auth, rejectRequest);
 router.put("/ignore/:id", auth, ignoreUser);
 
-router.get("/sent", auth, requestsSent);
-router.get("/received", auth, requestsReceived);
+// router.get("/sent", auth, requestsSent);
+// router.get("/received", auth, requestsReceived);
 router.get("/friends", auth, getConnections);
 
 module.exports = router;
