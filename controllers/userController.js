@@ -5,6 +5,7 @@ const Connection = require("../models/Connection")
 
 
 
+
 exports.getFeed = async (req, res) => {
   try {
     const meId = req.user.id;
@@ -44,9 +45,6 @@ exports.getFeed = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-
-
 
 
 
